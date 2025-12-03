@@ -235,9 +235,17 @@ function App() {
   };
 
   // Lógica de Pagamento
-  const handlePayRecord = (recordId: string) => {
+  const handlePayRecord = (recordId: string, paymentDate?: string) => {
+    const dateValue = paymentDate || new Date().toISOString().split('T')[0];
     setFinancialRecords(prevRecords => prevRecords.map(r => 
-      r.id === recordId ? { ...r, status: 'PAID' } : r
+      r.id === recordId ? { ...r, status: 'PAID', paymentDate: dateValue } : r
+    ));
+  };
+
+  // Reabrir título pago (voltar para PENDING e remover paymentDate)
+  const handleReopenRecord = (recordId: string) => {
+    setFinancialRecords(prevRecords => prevRecords.map(r => 
+      r.id === recordId ? { ...r, status: 'PENDING', paymentDate: undefined } : r
     ));
   };
 
@@ -414,6 +422,7 @@ function App() {
               invoices={invoices}
               onReturnInvoice={handleReturnInvoice}
               onPayRecord={handlePayRecord}
+              onReopenRecord={handleReopenRecord}
               onEditInvoice={handleEditFromFinance}
             />
           )}

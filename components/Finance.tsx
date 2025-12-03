@@ -7,7 +7,8 @@ interface FinanceProps {
   suppliers: Supplier[];
   invoices: Invoice[];
   onReturnInvoice: (id: string) => void;
-  onPayRecord: (id: string) => void;
+  onPayRecord: (id: string, paymentDate?: string) => void;
+  onReopenRecord: (id: string) => void;
   onEditInvoice: (invoiceId: string) => void;
 }
 
@@ -17,6 +18,7 @@ const Finance: React.FC<FinanceProps> = ({
   invoices, 
   onReturnInvoice,
   onPayRecord,
+  onReopenRecord,
   onEditInvoice
 }) => {
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE'>('ALL');
@@ -77,10 +79,25 @@ const Finance: React.FC<FinanceProps> = ({
   const handlePayment = (e: React.MouseEvent, recordId: string, amount: number) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (window.confirm(`Confirma o pagamento deste título no valor de R$ ${amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}?`)) {
-      onPayRecord(recordId);
-      setTimeout(() => alert("Pagamento registrado com sucesso!"), 100);
+
+    // Mostrar prompt no formato brasileiro DD/MM/AAAA e converter para ISO (AAAA-MM-DD)
+    const defaultDateBR = new Date().toLocaleDateString('pt-BR');
+    const inputBR = window.prompt('Data de pagamento (DD/MM/AAAA)', defaultDateBR);
+    if (inputBR === null) return; // usuário cancelou
+
+    // Validação simples formato DD/MM/AAAA
+    const isValidBR = /^\d{2}\/\d{2}\/\d{4}$/.test(inputBR);
+    if (!isValidBR) {
+      alert('Data inválida. Use o formato DD/MM/AAAA.');
+      return;
+    }
+
+    const [dd, mm, yyyy] = inputBR.split('/');
+    const isoDate = `${yyyy}-${mm}-${dd}`; // armazenar em ISO para consistência interna
+
+    if (window.confirm(`Confirma o pagamento deste título no valor de R$ ${amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})} na data ${inputBR}?`)) {
+      onPayRecord(recordId, isoDate);
+      setTimeout(() => alert('Pagamento registrado com sucesso!'), 100);
     }
   };
 
@@ -90,6 +107,16 @@ const Finance: React.FC<FinanceProps> = ({
        setTimeout(() => {
          onEditInvoice(viewInvoiceId);
        }, 100);
+    }
+  };
+
+  const handleReopen = (e: React.MouseEvent, recordId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (window.confirm('Deseja reabrir este título pago? O status voltará para PENDENTE e a data de pagamento será removida.')) {
+      onReopenRecord(recordId);
+      setTimeout(() => alert('Título reaberto com sucesso!'), 100);
     }
   };
 
@@ -129,6 +156,7 @@ const Finance: React.FC<FinanceProps> = ({
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Documento</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fornecedor</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Vencimento</th>
+                <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Data Pagto</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Método</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Valor</th>
                 <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
@@ -149,6 +177,12 @@ const Finance: React.FC<FinanceProps> = ({
                     <div className="flex items-center gap-2">
                       <Calendar size={14} className="text-gray-400" />
                       {new Date(record.dueDate).toLocaleDateString('pt-BR')}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="text-gray-400" />
+                      {record.paymentDate ? new Date(record.paymentDate).toLocaleDateString('pt-BR') : '-'}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
@@ -180,6 +214,17 @@ const Finance: React.FC<FinanceProps> = ({
                           title="Realizar Pagamento"
                         >
                           <DollarSign size={18} />
+                        </button>
+                      )}
+
+                      {record.status === 'PAID' && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleReopen(e, record.id)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center gap-1 p-1 hover:bg-red-50 rounded"
+                          title="Reabrir Título"
+                        >
+                          <CornerUpLeft size={18} />
                         </button>
                       )}
                     </div>
@@ -274,6 +319,26 @@ const Finance: React.FC<FinanceProps> = ({
                    <CornerUpLeft size={18} /> Estornar
                  </button>
                )}
+              {selectedRecord?.status === 'PAID' && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.confirm('Deseja reabrir este título pago?')) {
+                      // fechar modal antes de executar ação
+                      setViewInvoiceId(null);
+                      setTimeout(() => {
+                        if (selectedRecord) onReopenRecord(selectedRecord.id);
+                        alert('Título reaberto com sucesso!');
+                      }, 100);
+                    }
+                  }}
+                  className="px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-200 rounded-lg hover:bg-yellow-200 font-medium flex items-center gap-2"
+                >
+                  <CornerUpLeft size={18} /> Reabrir
+                </button>
+              )}
             </div>
           </div>
         </div>

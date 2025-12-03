@@ -67,6 +67,7 @@ export interface FinancialRecord {
   supplierId: string;
   documentNumber: string;
   dueDate: string;
+  paymentDate?: string; // Data em que o título foi pago
   amount: number;
   status: 'PENDING' | 'PAID' | 'OVERDUE';
   paymentMethod: 'BOLETO' | 'PIX' | 'TRANSFER' | 'CASH';
